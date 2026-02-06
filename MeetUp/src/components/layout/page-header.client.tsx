@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 /**
@@ -60,7 +60,7 @@ export function PageHeaderClient({
 }: PageHeaderClientProps) {
     const navigate = useNavigate();
 
-    const onBack = React.useCallback(() => {
+    const onBack = useCallback(() => {
         if (forceBackHref) {
             navigate(backHref);
             return;

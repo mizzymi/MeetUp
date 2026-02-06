@@ -1,0 +1,7 @@
+{
+  "name": "meetup-backend",
+  "private": true,
+  "scripts": {
+    "dev": ".\\mvnw.cmd -e spring-boot:run"
+  }
+}

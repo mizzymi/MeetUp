@@ -1,6 +1,4 @@
-"use client";
-
-import * as React from "react";
+import { useState, useCallback } from "react";
 
 export type NewMeetingValues = {
     title: string;
@@ -25,35 +23,35 @@ const initialValues: NewMeetingValues = {
 };
 
 export function useNewMeetingModal({ onSave }: UseNewMeetingModalArgs) {
-    const [open, setOpen] = React.useState(false);
-    const [saving, setSaving] = React.useState(false);
-    const [values, setValues] = React.useState<NewMeetingValues>(initialValues);
-    const [editingId, setEditingId] = React.useState<number | null>(null);
-    const setValue = React.useCallback(<K extends keyof NewMeetingValues>(key: K, value: NewMeetingValues[K]) => {
+    const [open, setOpen] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [values, setValues] = useState<NewMeetingValues>(initialValues);
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const setValue = useCallback(<K extends keyof NewMeetingValues>(key: K, value: NewMeetingValues[K]) => {
         setValues((prev) => ({ ...prev, [key]: value }));
     }, []);
 
-    const openCreate = React.useCallback(() => {
+    const openCreate = useCallback(() => {
         setEditingId(null);
         setValues(initialValues);
         setOpen(true);
     }, []);
 
-    const openEdit = React.useCallback((id: number, preset: NewMeetingValues) => {
+    const openEdit = useCallback((id: number, preset: NewMeetingValues) => {
         setEditingId(id);
         setValues(preset);
         setOpen(true);
     }, []);
 
-    const onClose = React.useCallback(() => {
+    const onClose = useCallback(() => {
         setOpen(false);
     }, []);
 
-    const reset = React.useCallback(() => {
+    const reset = useCallback(() => {
         setValues(initialValues);
     }, []);
 
-    const submit = React.useCallback(async () => {
+    const submit = useCallback(async () => {
         if (saving) return;
         setSaving(true);
         try {

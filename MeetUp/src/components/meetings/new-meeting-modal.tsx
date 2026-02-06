@@ -1,12 +1,10 @@
-"use client";
-
-import * as React from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button/button";
 import { Input } from "@/components/ui/input/input";
 import { Switch } from "@/components/ui/switch";
 import type { NewMeetingValues } from "@/hooks/use-new-meeting-modal";
+import { useState, useEffect, useMemo, MouseEventHandler } from "react";
 
 type NewMeetingModalProps = {
     open: boolean;
@@ -29,9 +27,9 @@ export function NewMeetingModal({
     className,
     title = "Nueva reunión",
 }: NewMeetingModalProps) {
-    const [error, setError] = React.useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (!open) return;
 
         setError(null);
@@ -44,7 +42,7 @@ export function NewMeetingModal({
         return () => window.removeEventListener("keydown", onKeyDown);
     }, [open, onOpenChange]);
 
-    const canSubmit = React.useMemo(() => {
+    const canSubmit = useMemo(() => {
         const titleOk = values.title.trim().length > 0;
         const emailOk = values.guestEmail.trim().length > 0;
         const startOk = values.startAt.trim().length > 0;
@@ -72,7 +70,7 @@ export function NewMeetingModal({
 
     if (!open) return null;
 
-    const onBackdropMouseDown: React.MouseEventHandler<HTMLDivElement> = (e) => {
+    const onBackdropMouseDown: MouseEventHandler<HTMLDivElement> = (e) => {
         if (e.target === e.currentTarget) onOpenChange(false);
     };
 
@@ -87,7 +85,7 @@ export function NewMeetingModal({
                 role="dialog"
                 aria-modal="true"
                 className={cn(
-                    "relative w-full max-w-[760px]",
+                    "relative w-full max-w-[760px] max-h-[calc(100dvh-40px)] overflow-auto",
                     "rounded-2xl border border-slate-200 bg-white shadow-xl",
                     "p-6",
                     className

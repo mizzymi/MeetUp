@@ -1,0 +1,13 @@
+{
+  "name": "meetup-root",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n FRONT,BACK,SFU -c cyan,magenta,green \"npm:dev:front\" \"npm:dev:back\" \"npm:dev:sfu\"",
+    "dev:front": "npm --prefix MeetUp run dev",
+    "dev:back": "npm --prefix backend run dev",
+    "dev:sfu": "npm --prefix sfu run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

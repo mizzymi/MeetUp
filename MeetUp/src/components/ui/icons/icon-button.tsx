@@ -1,4 +1,3 @@
-import * as React from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/icons/icon";

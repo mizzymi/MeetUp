@@ -1,4 +1,3 @@
-import * as React from "react";
 import { Plus, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button/button";

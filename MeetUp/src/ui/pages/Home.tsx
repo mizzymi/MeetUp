@@ -12,8 +12,8 @@ import { Api } from "@/lib/api";
 import type { MeDto, MeetingDto } from "@/lib/api/types";
 import { durationLabel, formatTime } from "@/lib/time/format";
 import { ApiError } from "@/lib/api/client";
-import type { SidebarNavItemData } from "@/components/sidebar/sidebar-nav";
 import { openMeetingDetails } from "@/hooks/open-meeting-detail";
+import { sidebarItems } from "@/utils/sidebar-items";
 
 export function Home() {
   const navigate = useNavigate();
@@ -22,7 +22,27 @@ export function Home() {
   const [me, setMe] = useState<MeDto | null>(null);
   const [nextMeeting, setNextMeeting] = useState<MeetingDto | null>(null);
   const [todayMeetings, setTodayMeetings] = useState<MeetingDto[]>([]);
+  function pickClosestActiveToday(meetings: MeetingDto[], now = new Date()): MeetingDto | null {
+    if (!meetings.length) return null;
 
+    const nowMs = now.getTime();
+
+    const inProgress = meetings
+      .filter((m) => {
+        const s = new Date(m.startsAt).getTime();
+        const e = new Date(m.endsAt).getTime();
+        return s <= nowMs && nowMs < e;
+      })
+      .sort((a, b) => new Date(a.endsAt).getTime() - new Date(b.endsAt).getTime())[0];
+
+    if (inProgress) return inProgress;
+
+    const upcoming = meetings
+      .filter((m) => new Date(m.startsAt).getTime() > nowMs)
+      .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())[0];
+
+    return upcoming ?? null;
+  }
   /**
    * Loads all home data:
    * - /me
@@ -35,15 +55,15 @@ export function Home() {
     setLoading(true);
 
     try {
-      const [meRes, nextRes, todayRes] = await Promise.all([
+      const [meRes, todayRes] = await Promise.all([
         Api.me(),
-        Api.nextMeeting(),
         Api.todayMeetings(),
       ]);
 
       setMe(meRes);
-      setNextMeeting(nextRes);
       setTodayMeetings(todayRes);
+
+      setNextMeeting(pickClosestActiveToday(todayRes, new Date()));
     } catch (e) {
       console.log("[Home] data load failed:", e);
       if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
@@ -68,7 +88,6 @@ export function Home() {
     };
   }, [load]);
 
-  // ✅ Refresh after create/edit/delete
   useEffect(() => {
     const onChanged = () => void load();
     window.addEventListener("meetings:changed", onChanged);
@@ -84,19 +103,13 @@ export function Home() {
     };
   }, [me]);
 
-  const sidebarItems: SidebarNavItemData[] = [
-    { label: "Home", href: "/", icon: "home" },
-    { label: "Calendar", href: "/calendar", icon: "calendar" },
-    { label: "Settings", href: "/settings", icon: "settings" },
-  ];
-
   if (loading) return <div className="p-6">Loading…</div>;
 
   return (
     <div className="flex min-h-dvh">
       <Sidebar items={sidebarItems} user={sidebarUser} />
 
-      <AppShell>
+      <AppShell title="Inicio">
         {/* Extra padding bottom en móvil para que no tape la bottom bar */}
         <div className="space-y-2 pb-20 md:pb-0">
           <div className="p-6 space-y-8">
@@ -106,9 +119,11 @@ export function Home() {
                   meeting={{
                     title: nextMeeting.title,
                     startsAt: nextMeeting.startsAt,
+                    endsAt: nextMeeting.endsAt,
                     startsAtLabel: formatTime(nextMeeting.startsAt),
                     endsAtLabel: formatTime(nextMeeting.endsAt),
                     hostName: nextMeeting.hostName,
+                    roomUrl: nextMeeting.roomUrl,
                   }}
                 />
               ) : (

@@ -1,4 +1,3 @@
-import * as React from "react";
 import { cn } from "@/lib/cn";
 import { User2 } from "lucide-react";
 import { Button } from "@/components/ui/button/button";

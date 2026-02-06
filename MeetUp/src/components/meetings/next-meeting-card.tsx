@@ -2,32 +2,22 @@ import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button/button";
 import { Clock, User2, ArrowRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 /**
  * Data model for the "Next meeting" hero card.
- *
- * Notes:
- * - Prefer providing `startsAt` as a real datetime (Date or ISO string).
- * - If you only have `startsAtLabel` ("HH:mm"), it will be interpreted as TODAY
- *   in the user's local timezone.
  */
 export type NextMeeting = {
     /** Meeting title. */
     title: string;
 
-    /**
-     * Start datetime.
-     * - Date: `new Date(...)`
-     * - ISO string: `"2026-02-06T14:30:00"`
-     *
-     * If omitted, `startsAtLabel` ("HH:mm") is used as a fallback (today).
-     */
+    /** Start datetime. */
     startsAt?: Date | string;
 
-    /**
-     * Human label shown in the UI (e.g. "14:30").
-     * Also used as fallback to resolve the actual Date (today) when `startsAt` is not provided.
-     */
+    /** Ends datetime. */
+    endsAt?: Date | string;
+
+    /** Human label shown in the UI (e.g. "14:30"). */
     startsAtLabel: string;
 
     /** End time label shown in the UI (e.g. "15:30"). */
@@ -40,53 +30,31 @@ export type NextMeeting = {
     description?: string;
 
     /**
+     * Room URL/path:
+     * - "http://localhost:5173/meetup-xxxx"
+     * - "/meetup-xxxx"
+     * - "meetup-xxxx"
+     */
+    roomUrl?: string;
+
+    /**
      * Optional override for the badge text.
      * If omitted, the badge will be computed from the meeting start time.
      */
     inLabel?: string;
 
-    /** Called when user clicks "Entrar". */
+    /** Called when user clicks "Entrar" (overrides default navigation). */
     onEnter?: () => void;
 };
 
-/**
- * Props for {@link NextMeetingCard}.
- */
 type NextMeetingCardProps = {
     meeting: NextMeeting;
     className?: string;
-
-    /**
-     * Base refresh interval (seconds) for the countdown badge.
-     * The component may temporarily refresh more frequently when the meeting is close.
-     * @defaultValue 30
-     */
     tickSeconds?: number;
-
-    /**
-     * When meeting has started, keep showing a badge ("En curso") instead of hiding it.
-     * @defaultValue true
-     */
     showStartedBadge?: boolean;
-
-    /**
-     * When meeting is close (<= this many minutes), refresh every second for smoother UX.
-     * @defaultValue 2
-     */
     fastRefreshThresholdMinutes?: number;
 };
 
-/**
- * "Next meeting" hero card with computed "time until start" badge.
- *
- * Behavior:
- * - If `meeting.inLabel` exists → use it (manual override).
- * - Else compute badge from `meeting.startsAt` (Date/ISO) or from `meeting.startsAtLabel` (today).
- * - Badge updates on an interval:
- *   - Default: every `tickSeconds`
- *   - When meeting is near (<= `fastRefreshThresholdMinutes`): every 1s
- *   - When started: every 10s (cheap refresh)
- */
 export function NextMeetingCard({
     meeting,
     className,
@@ -94,40 +62,24 @@ export function NextMeetingCard({
     showStartedBadge = true,
     fastRefreshThresholdMinutes = 2,
 }: NextMeetingCardProps) {
-    /**
-     * Current time snapshot used to compute the countdown label.
-     * Updated by interval based on proximity to start time.
-     */
+    const navigate = useNavigate();
+
     const [now, setNow] = useState<Date>(() => new Date());
 
-    /**
-     * Resolve the meeting start datetime once from props.
-     * - If `startsAt` provided: uses it
-     * - Else: parses `startsAtLabel` as today's time
-     */
     const start = useMemo(
         () => resolveStartDate(meeting.startsAt, meeting.startsAtLabel),
         [meeting.startsAt, meeting.startsAtLabel]
     );
 
-    /**
-     * Time left until meeting start in ms.
-     * Negative / 0 means it already started.
-     */
+    const end = useMemo(
+        () => resolveStartDate(meeting.endsAt, meeting.endsAtLabel),
+        [meeting.endsAt, meeting.endsAtLabel]
+    );
+
     const msLeft = start ? start.getTime() - now.getTime() : null;
 
-    /**
-     * Effective refresh interval:
-     * - If meeting is very close → 1s
-     * - If started → 10s
-     * - Else → tickSeconds
-     *
-     * This value changes over time (because `msLeft` changes),
-     * which causes the interval effect to re-bind with the new cadence.
-     */
     const effectiveTickSeconds = useMemo(() => {
         if (msLeft == null) return tickSeconds;
-
         if (msLeft <= 0) return 10;
 
         const thresholdMs = fastRefreshThresholdMinutes * 60 * 1000;
@@ -136,26 +88,37 @@ export function NextMeetingCard({
         return tickSeconds;
     }, [msLeft, tickSeconds, fastRefreshThresholdMinutes]);
 
-    /**
-     * Interval that updates "now" to trigger recomputation of the badge.
-     * Depends on `effectiveTickSeconds` to adapt refresh cadence.
-     */
     useEffect(() => {
         const id = window.setInterval(() => setNow(new Date()), effectiveTickSeconds * 1000);
         return () => window.clearInterval(id);
     }, [effectiveTickSeconds]);
 
-    /**
-     * Badge label:
-     * - manual override via `meeting.inLabel`
-     * - computed from `start` and `now`
-     */
     const computedInLabel = useMemo(() => {
         if (meeting.inLabel) return meeting.inLabel;
         if (!start) return undefined;
 
-        return formatTimeUntil(start, now, { showStartedBadge });
-    }, [meeting.inLabel, start, now, showStartedBadge]);
+        return formatMeetingBadge(start, end, now, { showStartedBadge });
+    }, [meeting.inLabel, start, end, now, showStartedBadge]);
+
+    const roomUrl = (meeting.roomUrl ?? "").trim();
+    const canEnter = !!meeting.onEnter || !!roomUrl;
+
+    const handleEnter = () => {
+        if (meeting.onEnter) return meeting.onEnter();
+
+        const raw = (meeting.roomUrl ?? "").trim();
+        if (!raw) return;
+
+        if (raw.startsWith("http")) {
+            const u = new URL(raw);
+            u.searchParams.set("autojoin", "1");
+            window.location.assign(u.toString());
+            return;
+        }
+
+        const base = toInternalPath(raw);
+        navigate(base);
+    };
 
     return (
         <div
@@ -198,7 +161,8 @@ export function NextMeetingCard({
                     intent="primary"
                     size="md"
                     rightIcon={ArrowRight}
-                    onClick={meeting.onEnter}
+                    onClick={handleEnter}
+                    disabled={!canEnter}
                     className="shrink-0"
                 >
                     Entrar
@@ -208,13 +172,17 @@ export function NextMeetingCard({
     );
 }
 
-/**
- * Resolves a start Date from either:
- * - `startsAt` (Date or ISO string)
- * - `startsAtLabel` ("HH:mm") interpreted as today in local time
- *
- * Returns null if it cannot parse.
- */
+function toInternalPath(urlOrPath: string) {
+    if (urlOrPath.startsWith("/")) return urlOrPath;
+
+    if (urlOrPath.startsWith("http")) {
+        const u = new URL(urlOrPath);
+        return u.pathname + u.search;
+    }
+
+    return "/" + urlOrPath;
+}
+
 function resolveStartDate(startsAt?: Date | string, startsAtLabel?: string): Date | null {
     if (startsAt instanceof Date) return startsAt;
 
@@ -241,36 +209,33 @@ function resolveStartDate(startsAt?: Date | string, startsAtLabel?: string): Dat
     return null;
 }
 
-/**
- * Computes a human label like:
- * - "En 15 minutos"
- * - "En 2 horas"
- * - "En 1 día"
- * - "En curso" (when started) if enabled
- *
- * Uses `Math.ceil` to avoid jumping to lower numbers too early.
- */
-function formatTimeUntil(
+function formatMeetingBadge(
     start: Date,
+    end: Date | null,
     now: Date,
     opts: { showStartedBadge: boolean }
 ): string | undefined {
-    const diffMs = start.getTime() - now.getTime();
+    const nowMs = now.getTime();
+    const startMs = start.getTime();
+    const endMs = end?.getTime();
 
-    if (diffMs <= 0) {
-        return opts.showStartedBadge ? "En curso" : undefined;
+    const graceMs = 30_000; // 30s
+    if (opts.showStartedBadge) {
+        if (nowMs >= startMs - graceMs && (endMs == null || nowMs <= endMs + graceMs)) {
+            return "En curso";
+        }
     }
+
+    const diffMs = startMs - nowMs;
+    if (diffMs <= 0) return opts.showStartedBadge ? "En curso" : undefined;
+
+    if (diffMs < 60_000) return "En menos de 1 minuto";
 
     const diffMin = Math.ceil(diffMs / 60_000);
-
-    if (diffMin < 60) {
-        return `En ${diffMin} minuto${diffMin === 1 ? "" : "s"}`;
-    }
+    if (diffMin < 60) return `En ${diffMin} minuto${diffMin === 1 ? "" : "s"}`;
 
     const diffHours = Math.ceil(diffMin / 60);
-    if (diffHours < 24) {
-        return `En ${diffHours} hora${diffHours === 1 ? "" : "s"}`;
-    }
+    if (diffHours < 24) return `En ${diffHours} hora${diffHours === 1 ? "" : "s"}`;
 
     const diffDays = Math.ceil(diffHours / 24);
     return `En ${diffDays} día${diffDays === 1 ? "" : "s"}`;

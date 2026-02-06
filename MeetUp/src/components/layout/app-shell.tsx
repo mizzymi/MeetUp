@@ -1,6 +1,4 @@
-"use client";
 
-import * as React from "react";
 import { useEffect, useState } from "react";
 
 import { PageTopbar } from "@/components/layout/page-topbar";
@@ -26,6 +24,8 @@ export type AppShellProps = {
      * Routed page content.
      */
     children: React.ReactNode;
+
+    title: string;
 };
 
 /**
@@ -58,7 +58,7 @@ export type MeetingDetailsEventPayload = {
  *   - `meetings:changed` (after create/delete/update) so pages can refresh lists
  *   - `meeting:details` to open details modal for a given meeting
  */
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, title }: AppShellProps) {
     /**
      * Current authenticated user.
      * Needed for permissions in MeetingDetailsModal (e.g., delete rules).
@@ -163,7 +163,7 @@ export function AppShell({ children }: AppShellProps) {
 
     return (
         <div className="flex-1">
-            <PageTopbar onNewMeeting={newMeetingModal.openCreate} />
+            <PageTopbar title={title} onNewMeeting={newMeetingModal.openCreate} />
 
             <NewMeetingModal
                 open={newMeetingModal.open}
@@ -176,11 +176,15 @@ export function AppShell({ children }: AppShellProps) {
 
             <MeetingDetailsModal
                 open={detailsOpen}
-                onOpenChange={setDetailsOpen}
+                onOpenChange={(next) => {
+                    setDetailsOpen(next);
+                    if (!next) setSelectedMeetingId(null);
+                }}
                 meetingId={selectedMeetingId}
                 me={me}
                 onDeleted={() => {
                     setDetailsOpen(false);
+                    setSelectedMeetingId(null);
                     window.dispatchEvent(new Event("meetings:changed"));
                 }}
             />

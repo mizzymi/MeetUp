@@ -38,7 +38,7 @@ export function SidebarUser({ user }: SidebarUserProps) {
         <div className="flex items-center gap-3">
             <div className="relative h-10 w-10 overflow-hidden rounded-full">
                 <img
-                    src={user.avatarUrl ?? undefined}
+                    src={user.avatarUrl}
                     alt={user.name}
                     className="h-full w-full object-cover"
                     loading="lazy"

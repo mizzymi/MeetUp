@@ -98,7 +98,9 @@ public class MeetingController {
         m.setCreateVideoLink(body.createVideoLink());
 
         if (body.createVideoLink()) {
-            m.setRoomUrl("http://localhost:5173/meetup-" + java.util.UUID.randomUUID());
+            if (m.getRoomUrl() == null || m.getRoomUrl().isBlank()) {
+                m.setRoomUrl("/meet/meetup-" + java.util.UUID.randomUUID());
+            }
         } else {
             m.setRoomUrl(null);
         }
@@ -165,7 +167,7 @@ public class MeetingController {
 
         if (body.createVideoLink()) {
             if (m.getRoomUrl() == null || m.getRoomUrl().isBlank()) {
-                m.setRoomUrl("http://localhost:5173/meetup-" + java.util.UUID.randomUUID());
+                m.setRoomUrl("/meetup-" + java.util.UUID.randomUUID());
             }
         } else {
             m.setRoomUrl(null);

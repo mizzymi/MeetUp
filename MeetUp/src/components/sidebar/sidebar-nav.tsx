@@ -1,5 +1,3 @@
-"use client";
-
 import { useLocation } from "react-router-dom";
 import { SidebarNavItem } from "./sidebar-nav-item";
 

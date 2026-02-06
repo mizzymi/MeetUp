@@ -1,8 +1,8 @@
-import * as React from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/icons/icon";
 import { inputStyles } from "./input.styles";
+import { forwardRef } from "react";
 
 /**
  * Props for {@link Input}.
@@ -34,7 +34,7 @@ type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
  * - Icons are absolutely positioned inside a relatively positioned wrapper.
  * - Padding is adjusted automatically via `inputStyles` variants.
  */
-export const Input = React.forwardRef<HTMLInputElement, InputProps>(
+export const Input = forwardRef<HTMLInputElement, InputProps>(
     ({ state = "default", leftIcon, rightIcon, className, ...props }, ref) => {
         const withLeftIcon = Boolean(leftIcon);
         const withRightIcon = Boolean(rightIcon);

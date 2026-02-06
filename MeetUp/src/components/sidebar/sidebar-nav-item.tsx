@@ -1,4 +1,3 @@
-import * as React from "react";
 import { NavLink, NavLinkRenderProps } from "react-router-dom";
 import { cn } from "@/lib/cn";
 import { Home, CalendarDays, Settings } from "lucide-react";

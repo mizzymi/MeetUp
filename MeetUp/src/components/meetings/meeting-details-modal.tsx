@@ -1,9 +1,8 @@
-"use client";
-
 import { CalendarDays, Clock, Copy, Pencil, Trash2, User, Video } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button/button";
 import { Input } from "@/components/ui/input/input";
+import { useNavigate } from "react-router-dom";
 
 import { Api } from "@/lib/api";
 import type { MeDto, MeetingDto, MeetingParticipantDto } from "@/lib/api/types";
@@ -64,7 +63,21 @@ export function MeetingDetailsModal({
 
     const [copyOk, setCopyOk] = useState<boolean>(false);
     const [deleting, setDeleting] = useState<boolean>(false);
+    const navigate = useNavigate();
 
+    function toInternalPath(urlOrPath: string) {
+        // si ya viene "/meetup-xxxx"
+        if (urlOrPath.startsWith("/")) return urlOrPath;
+
+        // si viene "http://..."
+        if (urlOrPath.startsWith("http")) {
+            const u = new URL(urlOrPath);
+            return u.pathname + u.search;
+        }
+
+        // si viene "meetup-xxxx" (sin /)
+        return "/" + urlOrPath;
+    }
     /**
      * Close with Escape.
      */
@@ -89,11 +102,14 @@ export function MeetingDetailsModal({
 
         if (meetingId == null) {
             setMeeting(null);
+            setLoading(false);
             return;
         }
 
-        let alive = true;
+        setMeeting(null);
         setLoading(true);
+
+        let alive = true;
 
         (async () => {
             try {
@@ -110,9 +126,7 @@ export function MeetingDetailsModal({
             }
         })();
 
-        return () => {
-            alive = false;
-        };
+        return () => { alive = false; };
     }, [open, meetingId]);
 
     /**
@@ -143,10 +157,12 @@ export function MeetingDetailsModal({
         return "No puedes borrar esta reunión (solo creador o invitado principal).";
     }, [meeting]);
 
-    const roomUrl = meeting?.roomUrl ?? "";
+    const roomUrl = (meeting?.roomUrl ?? "").trim();
     const guestName = meeting?.guestName ?? meeting?.guestEmail ?? "Invitado";
     const guestEmail = meeting?.guestEmail ?? "";
     const notes = meeting?.notes ?? "";
+    const base = toInternalPath(roomUrl).trim();
+    if (!base.startsWith("/")) return;
 
     const onBackdropMouseDown: MouseEventHandler<HTMLDivElement> = (e) => {
         if (e.target === e.currentTarget) onOpenChange(false);
@@ -191,7 +207,7 @@ export function MeetingDetailsModal({
                 role="dialog"
                 aria-modal="true"
                 className={cn(
-                    "relative w-full max-w-[760px]",
+                    "relative w-full max-w-[760px] max-h-[calc(100dvh-40px)] overflow-auto",
                     "rounded-2xl border border-slate-200 bg-white shadow-xl",
                     "p-6",
                     className
@@ -302,7 +318,14 @@ export function MeetingDetailsModal({
                                 <Button
                                     intent="primary"
                                     leftIcon={Video}
-                                    onClick={() => roomUrl && window.open(roomUrl, "_blank", "noopener,noreferrer")}
+                                    onClick={() => {
+                                        if (!roomUrl) return;
+
+                                        const base = toInternalPath(roomUrl);
+
+                                        onOpenChange(false);
+                                        navigate(base);
+                                    }}
                                     disabled={!roomUrl}
                                 >
                                     Entrar

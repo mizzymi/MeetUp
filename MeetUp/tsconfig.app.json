@@ -25,5 +25,5 @@
     },
     "include": [
         "src/**/*"
-, "postcss.config.cjs"    ]
+, "postcss.config.cjs", "../sfu"    ]
 }
