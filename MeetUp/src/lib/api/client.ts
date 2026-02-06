@@ -61,7 +61,6 @@ export async function apiGet<T>(path: string): Promise<T> {
   });
 
   if (res.status === 401 || res.status === 403) {
-    clearToken();
     throw new ApiError("UNAUTHORIZED", res.status);
   }
 
@@ -90,13 +89,47 @@ export async function apiPost<TResponse, TBody>(
   });
 
   if (res.status === 401 || res.status === 403) {
-    clearToken();
     throw new ApiError("UNAUTHORIZED", res.status);
   }
 
   if (!res.ok) {
     throw new ApiError(`HTTP_${res.status}`, res.status);
   }
+
+  return safeJson<TResponse>(res);
+}
+
+export async function apiDel<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "DELETE",
+    headers: {
+      ...authHeaders(),
+    },
+  });
+
+  if (res.status === 401 || res.status === 403) {
+    throw new ApiError("UNAUTHORIZED", res.status);
+  }
+
+  if (!res.ok) {
+    throw new ApiError(`HTTP_${res.status}`, res.status);
+  }
+
+  return safeJson<T>(res);
+}
+
+export async function apiPut<TResponse, TBody>(path: string, body: TBody): Promise<TResponse> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "PUT",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (res.status === 401 || res.status === 403) {
+    clearToken();
+    throw new ApiError("UNAUTHORIZED", res.status);
+  }
+  if (!res.ok) throw new ApiError(`HTTP_${res.status}`, res.status);
 
   return safeJson<TResponse>(res);
 }

@@ -19,17 +19,25 @@ export type MeetingDto = {
     startsAt: string; // ISO string
     endsAt: string;   // ISO string
     hostName: string;
-
     guestEmail: string;
-    notes?: string;
+    participants: MeetingParticipantDto[];
+    guestName?: string;
+    guestAvatarUrl?: string;
     createVideoLink: boolean;
+    roomUrl?: string;
+    notes?: string;
+    createdAt?: string;
+    updatedAt?: string;
 };
 
-/**
- * Request body for POST /meetings.
- * Notes:
- * - startsAt / endsAt MUST be ISO strings (Instant.parse on the server).
- */
+export type MeetingParticipantDto = {
+    email: string;
+    userId?: number;
+    name?: string;
+    avatarUrl?: string;
+    role: "OWNER" | "PRIMARY_GUEST" | "GUEST";
+};
+
 export type CreateMeetingRequest = {
     title: string;
     startsAt: string; // ISO

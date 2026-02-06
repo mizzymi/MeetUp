@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "@/lib/api/client";
+import { apiDel, apiGet, apiPost, apiPut } from "@/lib/api/client";
 import type { CreateMeetingRequest, MeDto, MeetingDto } from "@/lib/api/types";
 
 /**
@@ -27,4 +27,10 @@ export const Api = {
      */
     createMeeting: (body: CreateMeetingRequest) =>
         apiPost<MeetingDto, CreateMeetingRequest>("/meetings", body),
+
+    meeting: (id: number) => apiGet<MeetingDto>(`/meetings/${id}`),
+
+    updateMeeting: (id: number, body: CreateMeetingRequest) =>
+        apiPut<MeetingDto, CreateMeetingRequest>(`/meetings/${id}`, body),
+    deleteMeeting: (id: number) => apiDel<void>(`/meetings/${id}`),
 };

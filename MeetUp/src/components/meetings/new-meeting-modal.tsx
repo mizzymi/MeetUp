@@ -29,8 +29,12 @@ export function NewMeetingModal({
     className,
     title = "Nueva reunión",
 }: NewMeetingModalProps) {
+    const [error, setError] = React.useState<string | null>(null);
+
     React.useEffect(() => {
         if (!open) return;
+
+        setError(null);
 
         const onKeyDown = (e: KeyboardEvent) => {
             if (e.key === "Escape") onOpenChange(false);
@@ -39,6 +43,32 @@ export function NewMeetingModal({
         window.addEventListener("keydown", onKeyDown);
         return () => window.removeEventListener("keydown", onKeyDown);
     }, [open, onOpenChange]);
+
+    const canSubmit = React.useMemo(() => {
+        const titleOk = values.title.trim().length > 0;
+        const emailOk = values.guestEmail.trim().length > 0;
+        const startOk = values.startAt.trim().length > 0;
+        const endOk = values.endAt.trim().length > 0;
+
+        if (!titleOk || !emailOk || !startOk || !endOk) return false;
+        
+        const start = new Date(values.startAt);
+        const end = new Date(values.endAt);
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false;
+
+        return end.getTime() > start.getTime();
+    }, [values]);
+
+    async function handleSubmit() {
+        setError(null);
+
+        if (!canSubmit) {
+            setError("Revisa los campos: título, email y fechas (fin debe ser mayor que inicio).");
+            return;
+        }
+
+        await onSubmit();
+    }
 
     if (!open) return null;
 
@@ -68,13 +98,19 @@ export function NewMeetingModal({
                 </div>
 
                 <div className="space-y-5">
+                    {!!error && (
+                        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                            {error}
+                        </div>
+                    )}
+
                     <div>
                         <label className="text-sm font-medium text-slate-900">
                             Título <span className="text-red-500">*</span>
                         </label>
                         <div className="mt-2">
                             <Input
-                                placeholder="Placeholder"
+                                placeholder="Ej: Daily sync"
                                 value={values.title}
                                 onChange={(e) => setValue("title", e.target.value)}
                             />
@@ -116,7 +152,7 @@ export function NewMeetingModal({
                         <div className="mt-2">
                             <Input
                                 type="email"
-                                placeholder="Placeholder"
+                                placeholder="ej: invitado@mail.com"
                                 value={values.guestEmail}
                                 onChange={(e) => setValue("guestEmail", e.target.value)}
                             />
@@ -133,7 +169,7 @@ export function NewMeetingModal({
                                     "outline-none transition",
                                     "focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2"
                                 )}
-                                placeholder="Placeholder"
+                                placeholder="Añade contexto para el invitado…"
                                 value={values.notes}
                                 onChange={(e) => setValue("notes", e.target.value)}
                             />
@@ -162,17 +198,13 @@ export function NewMeetingModal({
                         <Button
                             intent="primary"
                             leftIcon={Check}
-                            onClick={onSubmit}
-                            disabled={saving}
+                            onClick={handleSubmit}
+                            disabled={saving || !canSubmit}
                         >
                             Guardar evento
                         </Button>
 
-                        <Button
-                            intent="secondary"
-                            onClick={() => onOpenChange(false)}
-                            disabled={saving}
-                        >
+                        <Button intent="secondary" onClick={() => onOpenChange(false)} disabled={saving}>
                             Cancelar
                         </Button>
                     </div>
