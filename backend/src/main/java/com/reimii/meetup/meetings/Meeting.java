@@ -2,6 +2,9 @@ package com.reimii.meetup.meetings;
 
 import java.time.Instant;
 
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -35,11 +38,24 @@ public class Meeting {
     @Column(nullable = false)
     private String guestEmail;
 
+    private String guestName;
+    private String guestAvatarUrl;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 
     @Column(nullable = false)
     private boolean createVideoLink = true;
+
+    // ✅ new
+    private String roomUrl;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private Instant createdAt;
+
+    @UpdateTimestamp
+    private Instant updatedAt;
 
     public Long getId() {
         return id;
@@ -93,6 +109,22 @@ public class Meeting {
         this.guestEmail = guestEmail;
     }
 
+    public String getGuestName() {
+        return guestName;
+    }
+
+    public void setGuestName(String guestName) {
+        this.guestName = guestName;
+    }
+
+    public String getGuestAvatarUrl() {
+        return guestAvatarUrl;
+    }
+
+    public void setGuestAvatarUrl(String guestAvatarUrl) {
+        this.guestAvatarUrl = guestAvatarUrl;
+    }
+
     public String getNotes() {
         return notes;
     }
@@ -107,5 +139,21 @@ public class Meeting {
 
     public void setCreateVideoLink(boolean createVideoLink) {
         this.createVideoLink = createVideoLink;
+    }
+
+    public String getRoomUrl() {
+        return roomUrl;
+    }
+
+    public void setRoomUrl(String roomUrl) {
+        this.roomUrl = roomUrl;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 }

@@ -50,7 +50,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 var auth = new UsernamePasswordAuthenticationToken(user, null, List.of());
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
-        } catch (NumberFormatException ignored) {
+        } catch (Exception ignored) {
             SecurityContextHolder.clearContext();
         }
 
