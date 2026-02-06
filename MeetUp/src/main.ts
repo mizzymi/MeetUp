@@ -13,13 +13,13 @@ const createWindow = () => {
     width: 800,
     height: 600,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
-      devTools: false,
+      contextIsolation: true,
+      // devTools: false,
     },
   });
 
-  mainWindow.setMenuBarVisibility(false); // fuerza oculto
-  mainWindow.removeMenu();
+  // mainWindow.setMenuBarVisibility(false); // fuerza oculto
+  // mainWindow.removeMenu();
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {

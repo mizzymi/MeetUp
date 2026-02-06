@@ -15,7 +15,8 @@ export type SidebarUserData = {
     /**
      * Avatar image URL (local `/...` or remote if configured in next.config.js).
      */
-    avatarUrl: string;
+    avatarUrl?: string;
+
 };
 
 type SidebarUserProps = {
@@ -34,10 +35,10 @@ type SidebarUserProps = {
  */
 export function SidebarUser({ user }: SidebarUserProps) {
     return (
-        <div className="flex items-center gap-3 border-t border-slate-200 pt-4">
+        <div className="flex items-center gap-3">
             <div className="relative h-10 w-10 overflow-hidden rounded-full">
                 <img
-                    src={user.avatarUrl}
+                    src={user.avatarUrl ?? undefined}
                     alt={user.name}
                     className="h-full w-full object-cover"
                     loading="lazy"

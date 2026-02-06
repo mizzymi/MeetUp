@@ -4,6 +4,8 @@ import * as React from "react";
 import { PageTopbar } from "@/components/layout/page-topbar";
 import { NewMeetingModal } from "@/components/meetings/new-meeting-modal";
 import { useNewMeetingModal } from "@/hooks/use-new-meeting-modal";
+import { Api } from "@/lib/api";
+import { datetimeLocalToIso } from "@/lib/time/datetime-local";
 
 type AppShellProps = {
     /**
@@ -25,10 +27,18 @@ type AppShellProps = {
 export function AppShell({ children }: AppShellProps) {
     const modal = useNewMeetingModal({
         onSave: async (values) => {
-            console.log("Saving meeting:", values);
+            await Api.createMeeting({
+                title: values.title,
+                startsAt: datetimeLocalToIso(values.startAt),
+                endsAt: datetimeLocalToIso(values.endAt),
+                guestEmail: values.guestEmail,
+                notes: values.notes?.trim() ? values.notes.trim() : undefined,
+                createVideoLink: values.createVideoLink,
+            });
+
+            window.dispatchEvent(new Event("meetings:changed"));
         },
     });
-
     return (
         <div className="flex-1">
             <PageTopbar onNewMeeting={modal.onOpen} />

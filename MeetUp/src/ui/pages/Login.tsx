@@ -5,6 +5,8 @@ import { IconBadge } from "@/components/ui/icons";
 import { BgDetails } from "@/components/layout";
 
 export function Login() {
+    const BACKEND_BASE = import.meta.env.VITE_API_BASE;
+
     return (
         <main className="relative min-h-screen w-full overflow-hidden">
             <BgDetails />
@@ -29,6 +31,9 @@ export function Login() {
                             leftIcon={ArrowRight}
                             showRightIcon={false}
                             className="h-10 rounded-lg px-5"
+                            onClick={() => {
+                                window.location.assign(`${BACKEND_BASE}/oauth2/authorization/google`);
+                            }}
                         >
                             Continuar con Google
                         </Button>
