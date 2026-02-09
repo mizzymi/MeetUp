@@ -46,7 +46,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         String token = jwtService.createToken(user.getId(), user.getEmail());
 
-        String redirect = frontendBaseUrl + "/#/auth/callback?token="
+        String redirect = frontendBaseUrl + "/auth/callback?token="
                 + URLEncoder.encode(token, StandardCharsets.UTF_8);
 
         response.sendRedirect(redirect);

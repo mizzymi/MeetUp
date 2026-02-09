@@ -1,4 +1,4 @@
-import { clearToken, getToken } from "@/lib/auth/token";
+import { getToken, clearActiveToken } from "@/lib/auth/token";
 
 /**
  * Backend base URL.
@@ -43,79 +43,40 @@ function authHeaders(): Record<string, string> {
   const token = getToken();
   if (!token) throw new ApiError("NO_TOKEN", 401);
 
-  return {
-    Authorization: `Bearer ${token}`,
-  };
+  return { Authorization: `Bearer ${token}` };
 }
 
 /**
- * GET JSON with Bearer auth.
- * Clears token on 401/403 (server says session is invalid).
+ * Handles auth failures consistently.
  */
+function handleAuthFailure(status: number): never {
+  clearActiveToken();
+  throw new ApiError("UNAUTHORIZED", status);
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "GET",
-    headers: {
-      ...authHeaders(),
-    },
+    headers: authHeaders(),
   });
 
-  if (res.status === 401 || res.status === 403) {
-    throw new ApiError("UNAUTHORIZED", res.status);
-  }
-
-  if (!res.ok) {
-    throw new ApiError(`HTTP_${res.status}`, res.status);
-  }
+  if (res.status === 401 || res.status === 403) handleAuthFailure(res.status);
+  if (!res.ok) throw new ApiError(`HTTP_${res.status}`, res.status);
 
   return safeJson<T>(res);
 }
 
-/**
- * POST JSON with Bearer auth.
- * Clears token on 401/403 (server says session is invalid).
- */
-export async function apiPost<TResponse, TBody>(
-  path: string,
-  body: TBody
-): Promise<TResponse> {
+export async function apiPost<TResponse, TBody>(path: string, body: TBody): Promise<TResponse> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: {
-      ...authHeaders(),
-      "Content-Type": "application/json",
-    },
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
 
-  if (res.status === 401 || res.status === 403) {
-    throw new ApiError("UNAUTHORIZED", res.status);
-  }
-
-  if (!res.ok) {
-    throw new ApiError(`HTTP_${res.status}`, res.status);
-  }
+  if (res.status === 401 || res.status === 403) handleAuthFailure(res.status);
+  if (!res.ok) throw new ApiError(`HTTP_${res.status}`, res.status);
 
   return safeJson<TResponse>(res);
-}
-
-export async function apiDel<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "DELETE",
-    headers: {
-      ...authHeaders(),
-    },
-  });
-
-  if (res.status === 401 || res.status === 403) {
-    throw new ApiError("UNAUTHORIZED", res.status);
-  }
-
-  if (!res.ok) {
-    throw new ApiError(`HTTP_${res.status}`, res.status);
-  }
-
-  return safeJson<T>(res);
 }
 
 export async function apiPut<TResponse, TBody>(path: string, body: TBody): Promise<TResponse> {
@@ -125,11 +86,20 @@ export async function apiPut<TResponse, TBody>(path: string, body: TBody): Promi
     body: JSON.stringify(body),
   });
 
-  if (res.status === 401 || res.status === 403) {
-    clearToken();
-    throw new ApiError("UNAUTHORIZED", res.status);
-  }
+  if (res.status === 401 || res.status === 403) handleAuthFailure(res.status);
   if (!res.ok) throw new ApiError(`HTTP_${res.status}`, res.status);
 
   return safeJson<TResponse>(res);
+}
+
+export async function apiDel<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+
+  if (res.status === 401 || res.status === 403) handleAuthFailure(res.status);
+  if (!res.ok) throw new ApiError(`HTTP_${res.status}`, res.status);
+
+  return safeJson<T>(res);
 }

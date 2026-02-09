@@ -1,18 +1,39 @@
 /**
- * JWT token helpers.
- * Keeping token logic in one place prevents "token/access_token/session" mismatches.
+ * Token helpers (multi-user + active user).
  */
-const KEY = "meetup:token";
 
-export function setToken(token: string) {
-  localStorage.setItem(KEY, token);
+const PREFIX = "meetup:token:";
+const ACTIVE_KEY = "meetup:activeUser";
+
+export function setActiveUser(userId: string) {
+  localStorage.setItem(ACTIVE_KEY, userId);
+}
+
+export function getActiveUser(): string | null {
+  return localStorage.getItem(ACTIVE_KEY);
+}
+
+export function setTokenForUser(userId: string, token: string) {
+  localStorage.setItem(PREFIX + userId, token);
+  setActiveUser(userId);
 }
 
 export function getToken(): string | null {
-  return localStorage.getItem(KEY);
+  const userId = getActiveUser();
+  if (!userId) return null;
+  return localStorage.getItem(PREFIX + userId);
 }
 
-export function clearToken() {
-  localStorage.removeItem(KEY);
+export function clearActiveToken() {
+  const userId = getActiveUser();
+  if (!userId) return;
+  localStorage.removeItem(PREFIX + userId);
+  localStorage.removeItem(ACTIVE_KEY);
 }
 
+export function clearTokenForUser(userId: string) {
+  localStorage.removeItem(PREFIX + userId);
+  if (getActiveUser() === userId) {
+    localStorage.removeItem(ACTIVE_KEY);
+  }
+}
