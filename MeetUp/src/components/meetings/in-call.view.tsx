@@ -123,7 +123,7 @@ export function InCallView({
         <div className="flex min-h-dvh">
             <Sidebar items={sidebarItems} user={sidebarUser} />
 
-            <div className="h-[calc(100vh-0px)] w-full overflow-hidden">
+            <div className="md:h-[calc(100vh-0px)] h-[calc(100vh-64px)] w-full overflow-hidden">
                 <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-6 py-4">
                     <Button
                         intent="neutral"
