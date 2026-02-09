@@ -8,24 +8,31 @@ import {
     MessageSquare,
     Users,
     LogOut,
+    CameraOff,
 } from "lucide-react";
 import { Sidebar } from "../sidebar/sidebar";
 import { SidebarNavItemData } from "../sidebar/sidebar-nav";
 import { useEffect, useMemo, useRef } from "react";
 import { SidebarUserData } from "../sidebar/sidebar-user";
 
+/**
+ * NOTE:
+ * remoteTracks in your hook includes kind ("audio" | "video"), but this UI type doesn’t.
+ * If you pick remoteTracks[0] blindly, you can accidentally pick an AUDIO-only stream and render it as video (black).
+ * So we pick the first remote stream that actually has a live video track.
+ */
 type RemoteTrack = { producerId: string; stream: MediaStream };
 
 type Props = {
     roomId: string;
-
-    // el AppShell ya recibe title={meeting.title}, pero aquí lo usamos para el header
     meetingTitle: string;
 
     localStream: MediaStream | null;
     remoteTracks: RemoteTrack[];
+
     sidebarItems: SidebarNavItemData[];
     sidebarUser: SidebarUserData;
+
     isMicOn: boolean;
     isCamOn: boolean;
 
@@ -37,6 +44,26 @@ type Props = {
     onLeave: () => void;
 };
 
+/**
+ * Safe helper to attach/detach MediaStreams to <video>.
+ * - Clears srcObject when stream becomes null.
+ * - Calls play() (some browsers require it even with autoPlay).
+ */
+function attachVideo(el: HTMLVideoElement | null, stream: MediaStream | null) {
+    if (!el) return;
+
+    if (!stream) {
+        try {
+            el.pause();
+        } catch { }
+        if (el.srcObject) el.srcObject = null;
+        return;
+    }
+
+    if (el.srcObject !== stream) el.srcObject = stream;
+    void el.play().catch(() => { });
+}
+
 export function InCallView({
     roomId,
     meetingTitle,
@@ -46,7 +73,6 @@ export function InCallView({
     sidebarUser,
     isMicOn,
     isCamOn,
-
     onBack,
     onToggleMic,
     onToggleCam,
@@ -54,34 +80,50 @@ export function InCallView({
     onOpenParticipants,
     onLeave,
 }: Props) {
-    const stage = remoteTracks[0] ?? null;
+    /**
+     * Stage stream selection:
+     * pick the first remote stream that has a LIVE video track.
+     */
+    const stage = useMemo(() => {
+        for (const t of remoteTracks) {
+            const vids = t.stream?.getVideoTracks?.() ?? [];
+            const hasLiveVideo = vids.some((x) => x.readyState === "live" && x.enabled);
+            if (hasLiveVideo) return t;
+        }
+        return null;
+    }, [remoteTracks]);
+
     const localVideoRef = useRef<HTMLVideoElement | null>(null);
+    const stageVideoRef = useRef<HTMLVideoElement | null>(null);
 
     const hasLocalVideo = useMemo(() => {
-        const t = localStream?.getVideoTracks?.() ?? [];
-        return t.some((x) => x.readyState === "live" && x.enabled);
+        const vids = localStream?.getVideoTracks?.() ?? [];
+        return vids.some((x) => x.readyState === "live" && x.enabled);
     }, [localStream]);
 
+    // Attach stage stream to stage <video>
     useEffect(() => {
-        const el = localVideoRef.current;
-        if (!el) return;
+        attachVideo(stageVideoRef.current, stage?.stream ?? null);
+    }, [stage]);
 
-        if (!localStream || !hasLocalVideo) {
-            el.srcObject = null;
-            return;
-        }
-
-        el.srcObject = localStream;
-
-        void el.play().catch(() => { });
+    // Attach local stream to PiP <video> only if we really have a live video track
+    useEffect(() => {
+        attachVideo(localVideoRef.current, hasLocalVideo ? localStream : null);
     }, [localStream, hasLocalVideo]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            attachVideo(stageVideoRef.current, null);
+            attachVideo(localVideoRef.current, null);
+        };
+    }, []);
 
     return (
         <div className="flex min-h-dvh">
             <Sidebar items={sidebarItems} user={sidebarUser} />
 
             <div className="h-[calc(100vh-0px)] w-full overflow-hidden">
-                {/* Header (como la captura: back + título + subtítulo) */}
                 <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-6 py-4">
                     <Button
                         intent="neutral"
@@ -95,39 +137,27 @@ export function InCallView({
                     />
 
                     <div className="min-w-0">
-                        <div className="truncate text-xl font-semibold text-slate-900">
-                            {meetingTitle}
-                        </div>
-                        <div className="truncate text-sm text-slate-500">
-                            Información completa de la reunión
-                        </div>
+                        <div className="truncate text-xl font-semibold text-slate-900">{meetingTitle}</div>
+                        <div className="truncate text-sm text-slate-500">Información completa de la reunión</div>
                     </div>
                 </div>
 
-                {/* Stage */}
                 <div className="relative flex h-[calc(100%-76px)] flex-col bg-white">
                     <div className="relative flex-1 overflow-hidden">
-                        {/* fondo oscuro */}
                         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
 
-                        {/* contenido central */}
                         <div className="relative z-10 flex h-full items-center justify-center px-6">
                             {stage ? (
                                 <video
                                     className="h-full max-h-[78vh] w-full max-w-[1180px] rounded-2xl bg-black/30 object-cover shadow-xl ring-1 ring-white/10"
                                     autoPlay
                                     playsInline
-                                    ref={(el) => {
-                                        if (!el) return;
-                                        el.srcObject = stage.stream;
-                                    }}
+                                    ref={stageVideoRef}
                                 />
                             ) : (
                                 <div className="flex w-full max-w-[980px] items-center justify-center rounded-2xl bg-white/5 p-10 text-center ring-1 ring-white/10">
                                     <div className="space-y-2">
-                                        <div className="text-lg font-semibold text-white">
-                                            Sala preparada
-                                        </div>
+                                        <div className="text-lg font-semibold text-white">Sala preparada</div>
                                         <div className="text-sm text-white/70">
                                             Cuando haya participantes, su vídeo aparecerá aquí.
                                         </div>
@@ -139,13 +169,14 @@ export function InCallView({
                             )}
                         </div>
 
-                        {/* Local PiP (abajo derecha) */}
                         <div className="absolute bottom-20 right-6 z-20 w-[260px] overflow-hidden rounded-2xl bg-slate-950/40 shadow-2xl ring-1 ring-white/10">
-                            <div className="px-3 pt-3 text-xs font-medium text-white/80">
-                                Tú
-                            </div>
-
                             <div className="relative p-3 pt-2">
+                                {!isMicOn ? (
+                                    <div className="absolute left-4 top-4 z-30 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/90 ring-1 ring-red-200/30 shadow">
+                                        <MicOff className="h-4 w-4 text-white" />
+                                    </div>
+                                ) : null}
+
                                 <div className="aspect-video overflow-hidden rounded-xl bg-black">
                                     {hasLocalVideo ? (
                                         <video
@@ -157,23 +188,18 @@ export function InCallView({
                                         />
                                     ) : (
                                         <div className="flex h-full w-full items-center justify-center text-xs text-white/70">
-                                            Sin vídeo
+                                            <CameraOff className="h-6 w-6" />
                                         </div>
                                     )}
-                                </div>
-
-                                <div className="absolute bottom-5 left-5 rounded-md bg-white/10 px-2 py-1 text-[11px] text-white/80 ring-1 ring-white/10">
-                                    {hasLocalVideo ? "Cámara activada" : "Cámara desactivada"}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Footer controls (centrados como la captura) */}
                     <div className="border-t border-slate-200 bg-white px-6 py-3">
                         <div className="flex items-center justify-center gap-2">
                             <IconToggleButton
-                                pressed={!isMicOn} // si está OFF, se ve “danger”
+                                pressed={!isMicOn}
                                 onClick={onToggleMic}
                                 iconOn={Mic}
                                 iconOff={MicOff}
@@ -231,10 +257,9 @@ export function InCallView({
 }
 
 /**
- * Botón toggle reutilizando TU Button (variants), sin inventar estilos.
- * - ON => intent="primary" (verde)
- * - OFF => intent="danger" (rojo)
- * - icon-only
+ * Small helper toggle button.
+ * - ON => intent="primary"
+ * - OFF => intent="danger"
  */
 function IconToggleButton({
     isOn,
@@ -247,8 +272,8 @@ function IconToggleButton({
     isOn: boolean;
     pressed: boolean;
     onClick: () => void;
-    iconOn: any; // LucideIcon
-    iconOff: any; // LucideIcon
+    iconOn: any;
+    iconOff: any;
     label: string;
 }) {
     const Icon = isOn ? iconOn : iconOff;

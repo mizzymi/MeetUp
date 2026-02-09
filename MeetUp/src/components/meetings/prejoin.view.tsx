@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input/input";
 import { Switch } from "@/components/ui/switch";
 import { Camera, Mic, Video } from "lucide-react";
 import { DeviceSelect } from "./device-select";
+import { useEffect, useMemo, useRef } from "react";
 import { SidebarUserData } from "../sidebar/sidebar-user";
 
 type Props = {
@@ -23,13 +24,30 @@ type Props = {
   joining: boolean;
 
   onJoin: () => void;
-
   shareLink: string;
 
   user: SidebarUserData;
   localStream?: MediaStream | null;
 };
 
+function attachVideo(el: HTMLVideoElement | null, stream: MediaStream | null) {
+  if (!el) return;
+
+  if (!stream) {
+    try { el.pause(); } catch { }
+    if (el.srcObject) el.srcObject = null;
+    return;
+  }
+
+  if (el.srcObject !== stream) el.srcObject = stream;
+  void el.play().catch(() => { });
+}
+
+/**
+ * PreJoinView
+ * - Shows preview video inside the avatar circle when camOn=true and localStream contains live video.
+ * - Detaches srcObject whenever camera turns off or stream changes.
+ */
 export function PreJoinView({
   micOn,
   camOn,
@@ -48,27 +66,35 @@ export function PreJoinView({
   user,
   localStream,
 }: Props) {
+  const previewVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  const hasLiveVideo = useMemo(() => {
+    const vids = localStream?.getVideoTracks?.() ?? [];
+    return vids.some((t) => t.readyState === "live");
+  }, [localStream]);
+
+  useEffect(() => {
+    const stream = camOn && hasLiveVideo ? localStream ?? null : null;
+    attachVideo(previewVideoRef.current, stream);
+  }, [camOn, hasLiveVideo, localStream]);
+
+  useEffect(() => {
+    return () => attachVideo(previewVideoRef.current, null);
+  }, []);
+
   return (
     <div className="min-h-dvh p-6">
-      <div
-        className={cn(
-          "mx-auto w-full max-w-[980px]",
-          "overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
-        )}
-      >
+      <div className={cn("mx-auto w-full max-w-[980px]", "overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl")}>
         <div className="relative grid place-items-center bg-slate-950 text-white aspect-[16/7]">
           <div className="text-center">
             <div className="relative m-auto h-32 w-32 overflow-hidden rounded-full ring-1 ring-white/10">
-              {camOn && localStream ? (
+              {camOn && hasLiveVideo ? (
                 <video
-                  className="h-full w-full object-cover"
+                  ref={previewVideoRef}
                   autoPlay
                   playsInline
                   muted
-                  ref={(el) => {
-                    if (!el) return;
-                    if (el.srcObject !== localStream) el.srcObject = localStream;
-                  }}
+                  className="h-full w-full object-cover"
                 />
               ) : (
                 <img
@@ -81,9 +107,7 @@ export function PreJoinView({
             </div>
 
             <div className="mt-2">
-              <p className="text-xs text-white">
-                <b>{user.name}</b>
-              </p>
+              <p className="text-xs text-white"><b>{user.name}</b></p>
               <p className="mt-1 text-xs text-white/60">{user.email}</p>
             </div>
 
@@ -113,7 +137,7 @@ export function PreJoinView({
                   <Mic className="h-4 w-4 text-slate-700" />
                   <div className="text-sm font-semibold text-slate-900">Micrófono</div>
                 </div>
-                <Switch checked={micOn} onCheckedChange={setMicOn} />
+                <Switch checked={micOn} onCheckedChange={(v) => setMicOn(v)} />
               </div>
 
               <DeviceSelect
@@ -131,7 +155,15 @@ export function PreJoinView({
                   <Camera className="h-4 w-4 text-slate-700" />
                   <div className="text-sm font-semibold text-slate-900">Cámara</div>
                 </div>
-                <Switch checked={camOn} onCheckedChange={setCamOn} />
+
+                {/* keep your UI debug if you want */}
+                <Switch
+                  checked={camOn}
+                  onCheckedChange={(v) => {
+                    console.log("[UI] cam switch ->", v);
+                    setCamOn(v);
+                  }}
+                />
               </div>
 
               <DeviceSelect
